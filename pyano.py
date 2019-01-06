@@ -4,6 +4,7 @@
 
 from scene import *
 import sound
+import ui
 from itertools import chain
 
 white_key_names = [
@@ -21,14 +22,18 @@ white_key_names = [
 	'G4']
 white_key_names = [f'Piano_{n}' for n in white_key_names] 
 
-class Key (object):
+class Key(ShapeNode):
 	def __init__(self, frame, hitFrame=None):
-		self.frame = frame
+		path = ui.Path.rounded_rect(0, 0, frame.w, frame.h, 8)
+		super().__init__(path)
 		self.hitFrame = hitFrame if hitFrame else frame
+		self.position = Point(frame.x + frame.w / 2, frame.y + frame.h / 2)
 		self.name = None
 		self.touch = None
-		self.color = Color(1, 1, 1, 1)
-		self.highlight_color = Color(0.9, 0.9, 0.9, 1)
+		self.stroke_color = (0, 0, 0, 1)
+		self.base_color = (1, 1, 1, 1)
+		self.highlight_color = (0.9, 0.9, 0.9, 1)
+		self.fill_color = self.base_color
 
 	def hit_test(self, touch):
 		return touch.location in self.hitFrame
@@ -49,7 +54,7 @@ class Piano (Scene):
 		  'Piano_G4#']
 		for key_name in chain(white_key_names, black_key_names):
 			sound.load_effect(key_name)
-		white_positions = range(14)
+		white_positions = range(12) 
 		black_positions = [0.5, 1.5, 3.5, 4.5, 5.5, 7.5, 8.5, 10.5,11.5, 12.5]
 		key_w = self.size.w
 		key_h = self.size.h / 12
@@ -58,30 +63,24 @@ class Piano (Scene):
 			key = Key(Rect(0, pos * key_h, key_w, key_h))
 			key.name = white_key_names[i]
 			self.white_keys.append(key)
+			self.add_child(key)
 		for i in range(len(black_key_names)):
 			pos = black_positions[i]
 			frame = Rect(0, pos * key_h + 10, key_w * 0.6, key_h - 20)
 			hitFrame = Rect(0, pos * key_h, key_w * 0.6, key_h)
 			key = Key(frame, hitFrame)
 			key.name = black_key_names[i]
-			key.color = Color(0, 0, 0, 1)
-			key.highlight_color = Color(0.2, 0.2, 0.2, 1)
+			key.base_color = (0, 0, 0, 1)
+			key.highlight_color = (0.2, 0.2, 0.2, 0.9)
+			key.fill_color = key.base_color
 			self.black_keys.append(key)
-
-	def draw(self):
-		stroke_weight(1)
-		stroke(0.5, 0.5, 0.5)
-		for key in chain(self.white_keys, self.black_keys):
-			if key.touch is not None:
-				fill(*key.highlight_color.as_tuple())
-			else:
-				fill(*key.color.as_tuple())
-			rect(*key.frame.as_tuple())
+			self.add_child(key)
 
 	def touch_began(self, touch):
 		for key in chain(self.black_keys, self.white_keys):
 			if key.hit_test(touch):
 				key.touch = touch
+				key.fill_color = key.highlight_color
 				sound.play_effect(key.name)
 				return
 
@@ -95,11 +94,13 @@ class Piano (Scene):
 					key.touch = touch
 					sound.play_effect(key.name)
 			if key.touch == touch and key is not hit_key:
+				key.fill_color = key.base_color
 				key.touch = None
 
 	def touch_ended(self, touch):
 		for key in chain(self.black_keys, self.white_keys):
 			if key.touch == touch:
+				key.fill_color = key.base_color
 				key.touch = None
 
 run(Piano(), PORTRAIT)
