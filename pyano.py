@@ -92,6 +92,7 @@ class Piano (Scene):
 				hit_key = key
 				if key.touch is None:
 					key.touch = touch
+					key.fill_color = key.highlight_color
 					sound.play_effect(key.name)
 			if key.touch == touch and key is not hit_key:
 				key.fill_color = key.base_color
