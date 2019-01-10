@@ -79,9 +79,7 @@ class Piano (Scene):
 	def touch_began(self, touch):
 		for key in chain(self.black_keys, self.white_keys):
 			if key.hit_test(touch):
-				key.touch = touch
-				key.fill_color = key.highlight_color
-				sound.play_effect(key.name)
+				self.pressKey(key, touch)
 				return
 
 	def touch_moved(self, touch):
@@ -90,18 +88,24 @@ class Piano (Scene):
 			hit = key.hit_test(touch)
 			if hit and hit_key is None:
 				hit_key = key
-				if key.touch is None:
-					key.touch = touch
-					key.fill_color = key.highlight_color
-					sound.play_effect(key.name)
+				self.pressKey(key, touch)
 			if key.touch == touch and key is not hit_key:
-				key.fill_color = key.base_color
-				key.touch = None
+				self.releaseKey(key)
 
 	def touch_ended(self, touch):
 		for key in chain(self.black_keys, self.white_keys):
 			if key.touch == touch:
-				key.fill_color = key.base_color
-				key.touch = None
+			    self.releaseKey(key)
+	
+	def pressKey(self, key, touch):
+		if key.touch is None:
+			key.touch = touch
+			key.fill_color = key.highlight_color
+			sound.play_effect(key.name)
+
+	def releaseKey(self, key):
+		key.fill_color = key.base_color
+		key.touch = None
+        
 
 run(Piano(), PORTRAIT)
