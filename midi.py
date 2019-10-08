@@ -1,11 +1,12 @@
 import ctypes
 from objc_util import ObjCClass, nsurl
 from pathlib import Path
+from sf2parser import get_sf2_preset_list
 
 
 def getDefaultSoundBank():
     soundBankFolder = Path(__file__).parent/ 'SoundBanks'
-    for sb in soundBankFolder.glob('A*.sf2'):
+    for sb in soundBankFolder.glob('*.sf2'):
         return str(soundBankFolder / sb)
 
 
@@ -26,13 +27,24 @@ class MIDIInstrument:
         self._sampler = self._setupSampler(self._engine)
         self._engine.startAndReturnError_(None)
         self._soundBank = soundBank if soundBank else getDefaultSoundBank()
-        self.loadInstrument(instrument)
+        self._presets = tuple(get_sf2_preset_list(self._soundBank))
+        self.loadInstrument(0)
         
-    def loadInstrument(self, instrument):
+    def getPresets(self):
+        return self._presets
+        
+    def loadInstrument(self, index_or_preset, bank=-1):
         if self._soundBank is None:
             return
         error = ctypes.c_void_p(0)
-        self._sampler.loadSoundBankInstrumentAtURL_program_bankMSB_bankLSB_error_(nsurl(self._soundBank), instrument, 0x79, 0, ctypes.pointer(error))
+        
+        if bank == -1:
+            preset, bank, _ = self._presets[index_or_preset]
+        else:
+            preset = index_or_preset
+        bankmsb = 0x79 if bank < 128 else 0x78
+        banklsb = bank % 128
+        self._sampler.loadSoundBankInstrumentAtURL_program_bankMSB_bankLSB_error_(nsurl(self._soundBank), preset, bankmsb, banklsb, ctypes.pointer(error))
         if error:
             raise Exception(f'Error loading sound bank {self._soundBank}')
             

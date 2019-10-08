@@ -12,7 +12,7 @@ from time import sleep
 
 mi = midi.MIDIInstrument()
 instrum =  46
-mi.loadInstrument(512*0+instrum)# 46 harp, 11 vibra, 14 tubular bels
+mi.loadInstrument(19, 0)# 46 harp, 11 vibra, 14 tubular bels
 # 68 oboi, 71 clarinette, 60 cor, 19 orgue, 52 voix
 
 nbinw = 18#22 # nb white keys in width
@@ -24,7 +24,7 @@ scale = 0 # flag to scale or slide keyboard
 blackRat = 0.5 # for blak keys 
 
 def get_keys(startf, nb_whites):
-  '''Return list of piano keys in the form (k, c) where k is the midi code and c is the color 'b' for black and 'w' for white' '''
+  '''Return list of piano keys in the form (k, c) where k is the midi code and c is the color 'b' for black and 'w' for white'''
   start = math.floor(startf)
   res = []
   n_w = 0
