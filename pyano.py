@@ -12,7 +12,7 @@ from time import sleep
 
 mi = midi.MIDIInstrument()
 instrum =  46
-mi.loadInstrument(19, 0)# 46 harp, 11 vibra, 14 tubular bels
+mi.loadInstrument(0, 0)# 46 harp, 11 vibra, 14 tubular bels
 # 68 oboi, 71 clarinette, 60 cor, 19 orgue, 52 voix
 
 nbinw = 18#22 # nb white keys in width
@@ -178,6 +178,77 @@ class Piano (Scene):
         key.fill_color = key.base_color
         key.touch = None
         mi.stopNote(key.name)
-        
 
-run(Piano(),LANDSCAPE)
+
+class PresetsDataSourceDelegate:
+
+    def __init__(self, presets):
+        self.presets = presets
+    
+    def tableview_number_of_sections(self, tableview):
+        # Return the number of sections (defaults to 1)
+        return 1
+
+    def tableview_number_of_rows(self, tableview, section):
+        # Return the number of rows in the section
+        return len(self.presets)
+
+    def tableview_cell_for_row(self, tableview, section, row):
+        # Create and return a cell for the given section/row
+        cell = ui.TableViewCell()
+        cell.text_label.text = self.presets[row][2]
+        return cell
+
+    def tableview_title_for_header(self, tableview, section):
+        # Return a title for the given section.
+        # If this is not implemented, no section headers will be shown.
+        return None
+
+    def tableview_can_delete(self, tableview, section, row):
+        # Return True if the user should be able to delete the given row.
+        return False
+
+    def tableview_can_move(self, tableview, section, row):
+        # Return True if a reordering control should be shown for the given row (in editing mode).
+        return False
+
+    def tableview_delete(self, tableview, section, row):
+        # Called when the user confirms deletion of the given row.
+        pass
+
+    def tableview_move_row(self, tableview, from_section, from_row, to_section, to_row):
+        # Called when the user moves a row with the reordering control (in editing mode).
+        pass
+
+    def tableview_did_select(self, tableview, section, row):
+        # Called when a row was de-selected (in multiple selection mode).
+        p = self.presets[row]
+        mi.loadInstrument(*p[:2])
+        
+        
+if __name__ == '__main__':
+    side_panel_width = 200
+    side_panel_y = 30
+    view = SceneView()
+    view.scene = Piano()
+    presets = mi.getPresets()
+    table = ui.TableView()
+    table.data_source = PresetsDataSourceDelegate(presets)
+    table.delegate = table.data_source
+    table.width = side_panel_width
+    table.x = -side_panel_width
+    table.y = side_panel_y
+    table.height = view.height - side_panel_y
+    table.flex = 'H'
+    view.add_subview(table)
+    b = ui.Button(title='Presets')
+    view.add_subview(b)
+    def open_close_panel(sender):
+        closing = table.x == 0
+        def animation(closing=closing):
+            table.x = -side_panel_width if closing else 0
+            view.scene.x = 0 if closing else side_panel_width
+        ui.animate(animation, duration=0.5)
+    b.action = open_close_panel
+    view.present()
+
