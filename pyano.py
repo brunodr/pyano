@@ -75,6 +75,7 @@ class Piano (Scene):
         print('button tapped')
         
     def init(self):
+        wGap = self.size.h - (self.size.w/2.67)
         for key in chain(self.black_keys, self.white_keys):
             key.remove_from_parent()
         self.white_keys.clear()
@@ -126,7 +127,7 @@ class Piano (Scene):
             return
         global mi
         mi = midi.MIDIInstrument()
-        mi.loadInstrument(512*0+instrum)
+        #mi.loadInstrumentd(512*0+instrum)
         #print(instrum)
         #Node.e
         #LabelNode('155')
@@ -227,11 +228,13 @@ class PresetsDataSourceDelegate:
         
         
 if __name__ == '__main__':
-    side_panel_width = 200
+    side_panel_width = 200 
     side_panel_y = 30
     view = SceneView()
     view.scene = Piano()
-    presets = mi.getPresets()
+    presets = list(mi.getPresets())
+    
+    presets.sort(key = lambda x:(x[1], x[0]))
     table = ui.TableView()
     table.data_source = PresetsDataSourceDelegate(presets)
     table.delegate = table.data_source
@@ -241,7 +244,8 @@ if __name__ == '__main__':
     table.height = view.height - side_panel_y
     table.flex = 'H'
     view.add_subview(table)
-    b = ui.Button(title='Presets')
+    b = ui.Button(title='____Presets')
+    b.background_color=(1,1,0)
     view.add_subview(b)
     def open_close_panel(sender):
         closing = table.x == 0
@@ -250,5 +254,5 @@ if __name__ == '__main__':
             view.scene.x = 0 if closing else side_panel_width
         ui.animate(animation, duration=0.5)
     b.action = open_close_panel
-    view.present()
+    view.present(orientations=LANDSCAPE)
 
