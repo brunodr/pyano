@@ -21,7 +21,8 @@ pblstart = 52.5 # wind start in white key scale
 wGap = 70 # Top keyboard ribon
 corrH = 0#-6 # to center key because PORTRAIT
 scale = 0 # flag to scale or slide keyboard
-blackRat = 0.5 # for blak keys 
+blackRat = 0.5 # for blak keys
+decal = 0 # global half tone decalage
 
 def get_keys(startf, nb_whites):
   '''Return list of piano keys in the form (k, c) where k is the midi code and c is the color 'b' for black and 'w' for white'''
@@ -182,7 +183,7 @@ class Piano (Scene):
  
     def getFinalNote(self, note):
         noteNumber = midi.convertNote(note)
-        return noteNumber
+        return noteNumber + decal
 
 
 class PresetsDataSourceDelegate:
