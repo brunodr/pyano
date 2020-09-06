@@ -173,12 +173,16 @@ class Piano (Scene):
         if key.touch is None:
             key.touch = touch
             key.fill_color = key.highlight_color
-            mi.playNote(key.name)
+            mi.playNote(self.getFinalNote(key.name))
 
     def releaseKey(self, key):
         key.fill_color = key.base_color
         key.touch = None
-        mi.stopNote(key.name)
+        mi.stopNote(self.getFinalNote(key.name))
+ 
+    def getFinalNote(self, note):
+        noteNumber = midi.convertNote(note)
+        return noteNumber
 
 
 class PresetsDataSourceDelegate:
