@@ -9,20 +9,16 @@ from itertools import chain
 import midi
 import math
 from time import sleep
+from settings import Settings
 
 mi = midi.MIDIInstrument()
 instrum =  46
 mi.loadInstrument(0, 0)# 46 harp, 11 vibra, 14 tubular bels
 # 68 oboi, 71 clarinette, 60 cor, 19 orgue, 52 voix
 
-nbinw = 18#22 # nb white keys in width
-fracKey = 0.5 # fraction of first white key in width
-pblstart = 52.5 # wind start in white key scale
-wGap = 70 # Top keyboard ribon
-corrH = 0#-6 # to center key because PORTRAIT
-scale = 0 # flag to scale or slide keyboard
-blackRat = 0.5 # for blak keys
-decal = 0 # global half tone decalage
+settings = Settings.load()
+settings.save()
+
 
 def get_keys(startf, nb_whites):
   '''Return list of piano keys in the form (k, c) where k is the midi code and c is the color 'b' for black and 'w' for white'''
@@ -53,7 +49,7 @@ class Key(ShapeNode):
         self.fill_color = self.base_color
 
     def hit_test(self, touch):
-        touch.location.y += corrH/ nbinw
+        touch.location.y += settings.corrH/ settings.nbinw
         return touch.location in self.hitFrame
 
 class Piano (Scene):
@@ -67,30 +63,30 @@ class Piano (Scene):
         self.init()
         btn = ui.Button('A')
         btn.x = 0
-        btn.y = self.size.h - wGap
+        btn.y = self.size.h - settings.wGap
         btn.width = 50
-        btn.height = wGap
+        btn.height = settings.wGap
         self.view.add_subview(btn)    
         
     def button_tapped(sender):
         print('button tapped')
         
     def init(self):
-        wGap = self.size.h - (self.size.w/2.67)
+        settings.wGap = self.size.h - (self.size.w/2.67)
         for key in chain(self.black_keys, self.white_keys):
             key.remove_from_parent()
         self.white_keys.clear()
         self.black_keys.clear()
-        key_h = self.size.h - wGap
-        key_w = self.size.w / nbinw
-        pos = math.floor(pblstart)-pblstart-1
-        for key_name, color in get_keys(pblstart, int(nbinw)+3):
+        key_h = self.size.h - settings.wGap
+        key_w = self.size.w / settings.nbinw
+        pos = math.floor(settings.pblstart)-settings.pblstart-1
+        for key_name, color in get_keys(settings.pblstart, int(settings.nbinw)+3):
             if color == 'w':
                 key = Key(Rect(pos * key_w-0.5, 0, key_w+0.5, key_h))
                 pos += 1
             else:
-                frame = Rect((pos - 0.5) * key_w + key_w *0.2, key_h * (1-blackRat), key_w - key_w * 0.4, key_h * blackRat)
-                hitFrame = Rect((pos - 0.45) * key_w-0.5,key_h * (1-blackRat), key_w+1,key_h * blackRat)
+                frame = Rect((pos - 0.5) * key_w + key_w *0.2, key_h * (1-settings.blackRat), key_w - key_w * 0.4, key_h * settings.blackRat)
+                hitFrame = Rect((pos - 0.45) * key_w-0.5,key_h * (1-settings.blackRat), key_w+1,key_h * settings.blackRat)
                 key = Key(frame, hitFrame)
                 key.z_position = 10.0
             key.name = key_name
@@ -107,17 +103,15 @@ class Piano (Scene):
         #v.present('sheet')
 
     def touch_began(self, touch):
-        global pblstart
-        global scale
         for key in chain(self.black_keys, self.white_keys):
             if key.hit_test(touch):
                 self.pressKey(key, touch)
                 return
-        if touch.location.y < self.size.h - wGap:
+        if touch.location.y < self.size.h - settings.wGap:
             return # Only on ribon
         self.touchx=touch
         if touch.location.x > (self.size.w - 60):
-            scale= not scale
+            settings.scale= not settings.scale
             return
         global instrum
         if touch.location.x < 60:  
@@ -136,22 +130,20 @@ class Piano (Scene):
          
     def touch_moved(self, touch):
         hit_key = None
-        global nbinw
         if self.touchx is not None:
-            delt= -(touch.location.x- self.touchx.location.x)/(self.size.w / nbinw)
-            if not scale:
+            delt= -(touch.location.x- self.touchx.location.x)/(self.size.w / settings.nbinw)
+            if not settings.scale:
                 if abs(delt)> 0.02:
-                    global pblstart
-                    pblstart+=delt
-                    blk = ((math.floor(pblstart)% 12) in (1, 3, 6, 8, 10))
+                    settings.pblstart+=delt
+                    blk = ((math.floor(settings.pblstart)% 12) in (1, 3, 6, 8, 10))
                     if delt < 0:
                         blk *=-1
-                    pblstart += blk
+                    settings.pblstart += blk
                     self.touchx = touch
                     self.init()
                     return
             else:
-                nbinw+=delt
+                settings.nbinw+=delt
                 self.touchx = touch
                 self.init()
             return
@@ -183,7 +175,7 @@ class Piano (Scene):
  
     def getFinalNote(self, note):
         noteNumber = midi.convertNote(note)
-        return noteNumber + decal
+        return noteNumber + settings.decal
 
 
 class PresetsDataSourceDelegate:
