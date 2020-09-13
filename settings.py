@@ -4,6 +4,7 @@ from pathlib import Path
 
 class Settings:
     def __init__(self):
+        self.soundbank = '*'
         self.nbinw = 18.     #22 # nb white keys in width
         self.pblstart = 52.5 # wind start in white key scale
         self.wGap = 70       # Top keyboard ribon

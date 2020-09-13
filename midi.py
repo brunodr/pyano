@@ -4,9 +4,9 @@ from pathlib import Path
 from sf2parser import get_sf2_preset_list
 
 
-def getDefaultSoundBank():
+def findSoundBankPath(pattern):
     soundBankFolder = Path(__file__).parent/ 'SoundBanks'
-    for sb in soundBankFolder.glob('*.sf2'):
+    for sb in soundBankFolder.glob(pattern + '.sf2'):
         return str(soundBankFolder / sb)
 
 
@@ -22,11 +22,11 @@ def convertNote(note):
 
 
 class MIDIInstrument:
-    def __init__(self, soundBank=None, instrument=0):
+    def __init__(self, soundBank='*', instrument=0):
         self._engine = self._setupEngine()
         self._sampler = self._setupSampler(self._engine)
         self._engine.startAndReturnError_(None)
-        self._soundBank = soundBank if soundBank else getDefaultSoundBank()
+        self._soundBank = findSoundBankPath(soundBank)
         self._presets = tuple(get_sf2_preset_list(self._soundBank))
         self.loadInstrument(0)
         

@@ -11,13 +11,13 @@ import math
 from time import sleep
 from settings import Settings
 
-mi = midi.MIDIInstrument()
+settings = Settings.load()
+settings.save() # Ensure the settings file is created
+
+mi = midi.MIDIInstrument(settings.soundbank)
 instrum =  46
 mi.loadInstrument(0, 0)# 46 harp, 11 vibra, 14 tubular bels
 # 68 oboi, 71 clarinette, 60 cor, 19 orgue, 52 voix
-
-settings = Settings.load()
-settings.save()
 
 
 def get_keys(startf, nb_whites):
