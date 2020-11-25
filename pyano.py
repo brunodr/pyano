@@ -16,7 +16,7 @@ settings.save() # Ensure the settings file is created
 
 mi = midi.MIDIInstrument(settings.soundbank)
 instrum =  46
-mi.loadInstrument(0, 0)# 46 harp, 11 vibra, 14 tubular bels
+mi.loadInstrument(0, 0, settings.soundbank[0])# 46 harp, 11 vibra, 14 tubular bels
 # 68 oboi, 71 clarinette, 60 cor, 19 orgue, 52 voix
 
 
@@ -34,6 +34,7 @@ def get_keys(startf, nb_whites):
               break
   return res
 
+ 
 
 class Key(ShapeNode):
     def __init__(self, frame, hitFrame=None):
@@ -194,7 +195,7 @@ class PresetsDataSourceDelegate:
     def tableview_cell_for_row(self, tableview, section, row):
         # Create and return a cell for the given section/row
         cell = ui.TableViewCell()
-        cell.text_label.text = self.presets[row][2]
+        cell.text_label.text = self.presets[row][3]+' ' + self.presets[row][2]
         return cell
 
     def tableview_title_for_header(self, tableview, section):
@@ -221,7 +222,7 @@ class PresetsDataSourceDelegate:
     def tableview_did_select(self, tableview, section, row):
         # Called when a row was de-selected (in multiple selection mode).
         p = self.presets[row]
-        mi.loadInstrument(*p[:2])
+        mi.loadInstrument(*p[:2],*p[3:])
         
         
 if __name__ == '__main__':
@@ -231,7 +232,7 @@ if __name__ == '__main__':
     view.scene = Piano()
     presets = list(mi.getPresets())
     
-    presets.sort(key = lambda x:(x[1], x[0]))
+    presets.sort(key = lambda x:(x[0], x[1]))
     table = ui.TableView()
     table.data_source = PresetsDataSourceDelegate(presets)
     table.delegate = table.data_source

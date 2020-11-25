@@ -22,24 +22,27 @@ def convertNote(note):
 
 
 class MIDIInstrument:
-    def __init__(self, soundBank='*', instrument=0):
+    def __init__(self, soundBank=['*'], instrument=0):
         self._engine = self._setupEngine()
         self._sampler = self._setupSampler(self._engine)
         self._engine.startAndReturnError_(None)
-        self._soundBank = findSoundBankPath(soundBank)
-        self._presets = tuple(get_sf2_preset_list(self._soundBank))
-        self.loadInstrument(0)
+        self._presets = ()
+        for cdbk in soundBank:
+            self._soundBank = findSoundBankPath(cdbk)
+            self._presets += tuple(get_sf2_preset_list(self._soundBank, cdbk))
+        self.loadInstrument(0,0,soundBank[0])
         
     def getPresets(self):
         return self._presets
         
-    def loadInstrument(self, index_or_preset, bank=-1):
+    def loadInstrument(self, index_or_preset, bank, idFBank):
+        self._soundBank = findSoundBankPath(idFBank)
         if self._soundBank is None:
             return
         error = ctypes.c_void_p(0)
         
         if bank == -1:
-            preset, bank, _ = self._presets[index_or_preset]
+            preset, bank, _, __= self._presets[index_or_preset]
         else:
             preset = index_or_preset
         bankmsb = 0x79 if bank < 128 else 0x78

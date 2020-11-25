@@ -7,10 +7,10 @@ from pathlib import Path
 import mmap
 
 
-def get_sf2_preset_list(sf2path):
+def get_sf2_preset_list(sf2path, idFBank):
     with open(sf2path, 'rb') as f:
         chk_dict = _parse_chunks(f)
-        return _parse_phdr_chunk(f, *chk_dict['sfbk']['pdta']['phdr'])
+        return _parse_phdr_chunk(f, *chk_dict['sfbk']['pdta']['phdr'], idFBank)
 
 
 def _unpack_chunk_header(f, pos):
@@ -73,7 +73,7 @@ CHAR achPresetName[20]; WORD wPreset;
 WORD wBank;
 WORD wPresetBagNdx; DWORD dwLibrary; DWORD dwGenre; DWORD dwMorphology;
 '''
-def _parse_phdr_chunk(f, pos, chklen):
+def _parse_phdr_chunk(f, pos, chklen, idFBank):
     res = []
     pos += 8
     end = pos + chklen
@@ -83,7 +83,7 @@ def _parse_phdr_chunk(f, pos, chklen):
         eos = name.find(0)
         if eos >= 0:
             name = name[:eos]
-        res.append((preset, bank, name.decode('ascii', errors='replace')))
+        res.append((preset, bank, name.decode('ascii', errors='replace'), idFBank))
         pos += 38
     return res    
 
@@ -95,8 +95,8 @@ class Sf2Parser:
 
 if __name__ == '__main__':
     sf2_folder = Path(__file__).parent / 'SoundBanks'
-    sf2_files = [str(f) for f in sf2_folder.glob('*.*')]
+    sf2_files = [str(f) for f in sf2_folder.glob('a*')]
     with open(sf2_files[0], "rb") as f:
         chk_dict = _parse_chunks(f)
-        for inst in _parse_phdr_chunk(f, *chk_dict['sfbk']['pdta']['phdr']):
+        for inst in _parse_phdr_chunk(f, *chk_dict['sfbk']['pdta']['phdr'], 'titi'):
             print(inst)
