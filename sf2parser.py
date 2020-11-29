@@ -7,10 +7,14 @@ from pathlib import Path
 import mmap
 
 
-def get_sf2_preset_list(sf2path, idFBank):
+def get_sf2_preset_list(sf2path):
+    '''
+    Return the list of presets in the sound font file in the form
+    of a list of tuples [(preset_index, bank, preset_name), ...]
+    '''
     with open(sf2path, 'rb') as f:
         chk_dict = _parse_chunks(f)
-        return _parse_phdr_chunk(f, *chk_dict['sfbk']['pdta']['phdr'], idFBank)
+        return _parse_phdr_chunk(f, *chk_dict['sfbk']['pdta']['phdr'])
 
 
 def _unpack_chunk_header(f, pos):
@@ -59,7 +63,7 @@ def _parse_inst_chunk(f, pos, chklen):
     f.seek(pos)
     index = 0
     while pos + 22 <= end:
-        name, bagindex = unpack('20sH', f.read(22))
+        name, _bagindex = unpack('20sH', f.read(22))
         eos = name.find(0)
         if eos >= 0:
             name = name[:eos]
@@ -69,34 +73,33 @@ def _parse_inst_chunk(f, pos, chklen):
     return res
         
 '''
-CHAR achPresetName[20]; WORD wPreset;
+CHAR achPresetName[20];
+WORD wPreset;
 WORD wBank;
-WORD wPresetBagNdx; DWORD dwLibrary; DWORD dwGenre; DWORD dwMorphology;
+WORD wPresetBagNdx;
+DWORD dwLibrary;
+DWORD dwGenre;
+DWORD dwMorphology;
 '''
-def _parse_phdr_chunk(f, pos, chklen, idFBank):
+def _parse_phdr_chunk(f, pos, chklen):
     res = []
     pos += 8
     end = pos + chklen
     f.seek(pos)
     while pos + 38 <= end:
-        name, preset, bank, bagindex, lib, genre, morph = unpack('<20sHHHIII', f.read(38))
+        name, preset, bank, _bagindex, _lib, _genre, _morph = unpack('<20sHHHIII', f.read(38))
         eos = name.find(0)
         if eos >= 0:
             name = name[:eos]
-        res.append((preset, bank, name.decode('ascii', errors='replace'), idFBank))
+        res.append((preset, bank, name.decode('ascii', errors='replace')))
         pos += 38
     return res    
 
 
-class Sf2Parser:
-    def __init__(fpath):
-        pass
-
-
 if __name__ == '__main__':
     sf2_folder = Path(__file__).parent / 'SoundBanks'
-    sf2_files = [str(f) for f in sf2_folder.glob('a*')]
+    sf2_files = [str(f) for f in sf2_folder.glob('*.*')]
     with open(sf2_files[0], "rb") as f:
         chk_dict = _parse_chunks(f)
-        for inst in _parse_phdr_chunk(f, *chk_dict['sfbk']['pdta']['phdr'], 'titi'):
+        for inst in _parse_phdr_chunk(f, *chk_dict['sfbk']['pdta']['phdr']):
             print(inst)

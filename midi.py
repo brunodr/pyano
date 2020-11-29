@@ -26,10 +26,12 @@ class MIDIInstrument:
         self._engine = self._setupEngine()
         self._sampler = self._setupSampler(self._engine)
         self._engine.startAndReturnError_(None)
-        self._presets = ()
+        self._presets = []
         for cdbk in soundBank:
             self._soundBank = findSoundBankPath(cdbk)
-            self._presets += tuple(get_sf2_preset_list(self._soundBank, cdbk))
+            file_presets = get_sf2_preset_list(self._soundBank)
+            for preset, bank, name in file_presets:
+                self._presets.append((preset, bank, name, cdbk))
         self.loadInstrument(0,0,soundBank[0])
         
     def getPresets(self):
