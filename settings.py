@@ -40,5 +40,5 @@ class Settings:
         path = Path(__file__).parent / 'settings.json'
         tmp = dict(self.__dict__)
         tmp['currentPreset'] = preset_to_json(tmp['currentPreset'])
-        path.write_text(json.dumps(self.__dict__, indent=2))
+        path.write_text(json.dumps(tmp, indent=2))
  
