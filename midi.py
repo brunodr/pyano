@@ -21,6 +21,14 @@ def convertNote(note):
     return mappedNote
 
 
+class Preset:
+    def __init__(self, index = 0, bank = 0, name = '', sb = ''):
+        self.index = index
+        self.bank = bank
+        self.name = name
+        self.sb = sb
+
+
 class MIDIInstrument:
     def __init__(self, soundBank=['*'], instrument=0):
         self._engine = self._setupEngine()
@@ -31,7 +39,7 @@ class MIDIInstrument:
             self._soundBank = findSoundBankPath(cdbk)
             file_presets = get_sf2_preset_list(self._soundBank)
             for preset, bank, name in file_presets:
-                self._presets.append((preset, bank, name, cdbk))
+                self._presets.append(Preset(preset, bank, name, cdbk))
         self.loadInstrument(0,0,soundBank[0])
         
     def getPresets(self):
