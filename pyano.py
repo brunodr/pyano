@@ -242,15 +242,23 @@ if __name__ == '__main__':
     table.height = view.height - side_panel_y
     table.flex = 'H'
     view.add_subview(table)
-    b = ui.Button(title='____Presets')
-    b.background_color=(1,1,0)
+    b = ui.Button(title=' Presets ',font=('<system-bold>',20),x=50)
+    b.background_color=(1,1,1)
+    b.front_color=(1,0,0)
     view.add_subview(b)
     def open_close_panel(sender):
         closing = table.x == 0
         def animation(closing=closing):
             table.x = -side_panel_width if closing else 0
             view.scene.x = 0 if closing else side_panel_width
-        ui.animate(animation, duration=0.5)
+        ui.animate(animation, duration=0.5) 
     b.action = open_close_panel
+    
+    b2 = ui.Button(title=' Récents ',font=('<system-bold>',20),x=150)
+    b2.background_color=(1,1,1)
+    b2.front_color=(1,0,0)
+    b2.tint_color=(1,0,0)
+    view.add_subview(b2)
+    b2.action = open_close_panel
     view.present(orientations=LANDSCAPE)
 
