@@ -5,8 +5,7 @@ Parser based on SoundFont 2 specification available here:
 http://freepats.zenvoid.org/sf2/sfspec24.pdf
 '''
 
-
-from struct import unpack
+import struct
 from pathlib import Path
 
 
@@ -65,83 +64,6 @@ gen_dict = {
 57: "exclusiveClass",
 58: "overridingRootKey", }
 
-
-def get_sf2_preset_list(sf2path):
-    '''
-    Return the list of presets in the sound font file in the form
-    of a list of tuples [(preset_index, bank, preset_name), ...]
-    '''
-    with open(sf2path, 'rb') as f:
-        chk_dict = _parse_chunks(f)
-        presets = _parse_phdr_chunk(f, chk_dict['sfbk']['pdta']['phdr'])
-        # The raw preset list contains a terminal entry which we need to remove
-        return [(p[1], p[2], p[0]) for p in presets[:-1]]
-
-
-def _unpack_chunk_header(f, pos):
-    f.seek(pos)
-    chkid, chklen = unpack('4sI', f.read(8))
-    return (chkid.decode('ascii'), chklen)
-
-
-def _cleanstr(s):
-    eos = s.find(0)
-    return s[:eos] if eos >= 0 else s
-
-
-def _iterchunk(f, chunk, entry_size):
-    pos = chunk[0]
-    chklen = chunk[1]
-    pos += 8
-    end = pos + chklen
-    f.seek(pos)
-    while pos + entry_size <= end:
-        yield f.read(entry_size)
-        pos += entry_size
-
-
-def _print_riff_struct(f, pos):
-     chkid, chklen = _unpack_chunk_header(f, pos)
-     end = pos + 8 + chklen
-     if chkid in ['RIFF', 'LIST']:
-         subid = unpack('4s', f.read(4))[0].decode('ascii')
-         print(f'{chkid}-{subid} {pos} {chklen}')
-         pos += 12
-         while pos < end:
-             pos += _print_riff_struct(f, pos)
-     else:
-         print(f'{chkid} {pos} {chklen}')
-     return chklen + 8
-
-
-def _parse_chunks(f):
-    def parse_rec(pos, chk_dict):
-         chkid, chklen = _unpack_chunk_header(f, pos)
-         end = pos + 8 + chklen
-         if chkid in ['RIFF', 'LIST']:
-             subid = unpack('4s', f.read(4))[0].decode('ascii')
-             sub_dict = {}
-             chk_dict[subid] = sub_dict
-             pos += 12
-             while pos < end:
-                 pos += parse_rec(pos, sub_dict)
-         else:
-             chk_dict[chkid] = (pos, chklen)
-         return chklen + 8
-    top_dict = {}
-    parse_rec(0, top_dict)
-    return top_dict
-
-
-def _parse_inst_chunk(f, chunk):
-    res = []
-    for index, buff in enumerate(_iterchunk(f, chunk, 22)):
-        name, _bagindex = unpack('20sH', buff)
-        name = _cleanstr(name)
-        res.append((index, name.decode('ascii', errors='replace')))
-    return res
-
-
 '''
 struct sfPresetHeader {
     CHAR achPresetName[20];
@@ -153,26 +75,17 @@ struct sfPresetHeader {
     DWORD dwMorphology;
 }
 '''
-def _parse_phdr_chunk(f, chunk):
-    res = []
-    for buff in _iterchunk(f, chunk, 38):
-        name, preset, bank, bagindex, _lib, _genre, _morph = unpack('<20sHHHIII', buff)
-        name = _cleanstr(name).decode('ascii', errors='replace')
-        res.append((name, preset, bank, bagindex))
-    return res    
-
-
+_phdr_fmt = '<20sHHHIII'
+def _phdr_parse(buff, pos):
+    name, preset, bank, bagindex = struct.unpack_from('<20sHHH', buff, pos)
+    return (__convstr(name), preset, bank, bagindex)
+  
 '''
 struct sfPresetBag {
     WORD wGenNdx;
     WORD wModNdx; };
 '''
-def _parse_pbag_chunk(f, chunk):
-    res = []
-    for buff in _iterchunk(f, chunk, 4):
-        genIndex, modIndex = unpack('<HH', buff)
-        res.append((genIndex, modIndex))
-    return res
+_pbag_fmt = '<HH'
 
 
 '''
@@ -192,15 +105,13 @@ typedef union {
     WORD wAmount;
 } genAmountType;
 '''
-def _parse_pgen_chunk(f, chunk):
-    res = []
-    for buff in _iterchunk(f, chunk, 4):
-        genType, data = unpack('<HH', buff)
-        if genType == 43 or genType == 44:
-            _, low, high = unpack('<HBB', buff)
-            data = (low, high)
-        res.append((genType, data))
-    return res
+_pgen_fmt = '<HH'
+def _pgen_parse(buff, pos):
+    genType, data = struct.unpack_from('<HH', buff, pos)
+    if genType == 43 or genType == 44:
+        _, low, high = struct.unpack_from('<HBB', buff, pos)
+        data = (low, high)
+    return (genType, data)
 
 
 '''
@@ -208,13 +119,10 @@ struct sfInst {
     CHAR achInstName[20];
     WORD wInstBagNdx; };
 '''
-def _parse_inst_chunk(f, chunk):
-    res = []
-    for buff in _iterchunk(f, chunk, 22):
-        name, bagindex = unpack('<20sH', buff)
-        name = _cleanstr(name).decode('ascii', errors='replace')
-        res.append((name, bagindex))
-    return res
+_inst_fmt = '<20sH'
+def _inst_parse(buff, pos):
+    name, bagindex = struct.unpack_from('<20sH', buff, pos)
+    return (__convstr(name), bagindex)
 
 
 '''
@@ -222,8 +130,135 @@ struct sfInstGenList {
     SFGenerator sfGenOper;
     genAmountType genAmount; };
 '''
-def _parse_igen_chunk(f, chunk):
-    return _parse_pgen_chunk(f, chunk)
+_igen_fmt = _pgen_fmt
+_igen_parse = _pgen_parse
+
+
+_chunk_desc_dict = {
+    'phdr': (_phdr_fmt, _phdr_parse),
+    'inst': (_inst_fmt, _inst_parse),
+    'pbag': (_pbag_fmt, None),
+    'pgen': (_pgen_fmt, _pgen_parse),
+    'igen': (_igen_fmt, _igen_parse),
+}
+
+
+def get_sf2_preset_list(sf2path):
+    '''
+    Return the list of presets in the sound font file in the form
+    of a list of tuples [(preset_index, bank, preset_name), ...]
+    '''
+    with open(sf2path, 'rb') as f:
+        chk_dict = _parse_chunks(f)
+        presets = chk_dict['sfbk']['pdta']['phdr'][:]
+        # The raw preset list contains a terminal entry which we need to remove
+        return [(p[1], p[2], p[0]) for p in presets[:-1]]
+
+
+class Chunk:
+    '''
+    Utility class for reading SF2 file chunks.
+    '''
+    def __init__(self, name, f, pos, size, fmt, parse_func=None):
+        self.f = f
+        self.pos = pos
+        self.chunk_size = size
+        self.elem_size = struct.calcsize(fmt)
+        self.format = fmt
+        self.elem_count = self.chunk_size // self.elem_size
+        self.parse_func = parse_func
+
+    def __len__(self):
+        return self.elem_count
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            if key.start is None:
+                start = 0
+            else:
+                start = key.start
+                self.__checkindex(start)
+            if key.stop is None:
+                stop = self.elem_count
+            else:
+                stop = key.stop
+                self.__checkindex(stop)
+            count = stop - start
+            if count <= 0:
+                return []
+            self.f.seek(self.pos + 8 + start * self.elem_size)
+            buff = self.f.read(self.elem_size * count)
+            if self.parse_func:
+                return [self.parse_func(buff, i * self.elem_size) for i in range(count)]
+            else:
+                return [struct.unpack_from(self.format, buff, i * self.elem_size) for i in range(count)]
+        else:
+            self.__checkindex(key)
+            self.f.seek(self.pos + 8 + key * self.elem_size)
+            buff = self.f.read(self.elem_size)
+            if self.parse_func:
+                return self.parse_func(buff, 0)
+            else:
+                return struct.unpack(self.format, buff)
+
+    def __checkindex(self, index):
+        if not isinstance(index, int):
+            raise TypeError('Invalid index type')
+        if index < 0 or index >= self.elem_count:
+            raise IndexError(f'Index {index} is out of range')
+
+
+def _unpack_chunk_header(f, pos):
+    f.seek(pos)
+    chkid, chklen = struct.unpack('4sI', f.read(8))
+    return (chkid.decode('ascii'), chklen)
+
+
+def _cleanstr(s):
+    eos = s.find(0)
+    return s[:eos] if eos >= 0 else s
+
+
+def __convstr(s):
+    return _cleanstr(s).decode('ascii', errors='replace')
+
+
+def _print_riff_struct(f, pos):
+     chkid, chklen = _unpack_chunk_header(f, pos)
+     end = pos + 8 + chklen
+     if chkid in ['RIFF', 'LIST']:
+         subid = struct.unpack('4s', f.read(4))[0].decode('ascii')
+         print(f'{chkid}-{subid} {pos} {chklen}')
+         pos += 12
+         while pos < end:
+             pos += _print_riff_struct(f, pos)
+     else:
+         print(f'{chkid} {pos} {chklen}')
+     return chklen + 8
+
+
+def _parse_chunks(f):
+    def parse_rec(pos, chk_dict):
+         chkid, chklen = _unpack_chunk_header(f, pos)
+         end = pos + 8 + chklen
+         if chkid in ['RIFF', 'LIST']:
+             subid = struct.unpack('4s', f.read(4))[0].decode('ascii')
+             sub_dict = {}
+             chk_dict[subid] = sub_dict
+             pos += 12
+             while pos < end:
+                 pos += parse_rec(pos, sub_dict)
+         else:
+            chkdef = _chunk_desc_dict.get(chkid)
+            if chkdef:
+                chk_dict[chkid] = Chunk(chkid, f, pos, chklen, chkdef[0], chkdef[1])
+            else:
+                chk_dict[chkid] = None
+         return chklen + 8
+    top_dict = {}
+    parse_rec(0, top_dict)
+    return top_dict
+
 
 
 if __name__ == '__main__':
@@ -231,10 +266,11 @@ if __name__ == '__main__':
     sf2_files = [str(f) for f in sf2_folder.glob('*.*')]
     with open(sf2_files[0], "rb") as f:
         chk_dict = _parse_chunks(f)
-        presets = _parse_phdr_chunk(f, chk_dict['sfbk']['pdta']['phdr'])
-        pbags = _parse_pbag_chunk(f, chk_dict['sfbk']['pdta']['pbag'])
-        pgens = _parse_pgen_chunk(f, chk_dict['sfbk']['pdta']['pgen'])
-        igens = _parse_igen_chunk(f, chk_dict['sfbk']['pdta']['igen'])
+        pdta = chk_dict['sfbk']['pdta']
+        presets = pdta['phdr'][:]
+        pbags = pdta['pbag'][:]
+        pgens = pdta['pgen'][:]
+        igens = pdta['igen'][:]
         for i in range(len(presets) - 1):
             p = presets[i]
             zone_start = p[3]
